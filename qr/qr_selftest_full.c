@@ -323,6 +323,7 @@ static int buildMatrix(const char *text, uint8_t outMod[QRNAX][QRNAX], int *outS
 #undef PUT
 
     int totalDataBytes = vi->data;
+    static uint8_t dcw_bak[3000];
     uint8_t *dcw = calloc(totalDataBytes, 1);
     for (long i = 0; i < totalDataBits; i++) {
         if (bits[i]) dcw[i / 8] |= (1 << (7 - (i % 8)));
@@ -355,12 +356,28 @@ static int buildMatrix(const char *text, uint8_t outMod[QRNAX][QRNAX], int *outS
     for (int i = 0; i < eccLen; i++) {
         for (int b = 0; b < blocks; b++) inter[ip++] = eblk[b][i];
     }
+    memcpy(dcw_bak, dcw, totalDataBytes);
     free(dcw);
 
     uint8_t *ibit = calloc(vi->total * 8, 1);
     long ibc = 0;
     for (long i = 0; i < ip; i++) {
         for (int k = 7; k >= 0; k--) ibit[ibc++] = (inter[i] >> k) & 1;
+    }
+
+    // === dump 中间结果，供和 Python 对比 ===
+    {
+        FILE *df = fopen("dump.txt", "w");
+        fprintf(df, "ver %d\n", ver);
+        fprintf(df, "n %d\n", n);
+        fprintf(df, "totalDataBits %ld\n", totalDataBits);
+        fprintf(df, "dcw %d", totalDataBytes);
+        for (int i = 0; i < totalDataBytes && i < 64; i++) fprintf(df, " %d", dcw_bak[i]);
+        fprintf(df, "\n");
+        fprintf(df, "inter %ld", ip);
+        for (long i = 0; i < ip && i < 64; i++) fprintf(df, " %d", inter[i]);
+        fprintf(df, "\n");
+        fclose(df);
     }
 
     QRMat m;

@@ -28,7 +28,7 @@ jobs:
         run: |
           python3 - <<'PY'
           import numpy as np, cv2
-          # 读 PBM
+          # �?PBM
           with open('objc_qr.pbm') as f:
               toks = f.read().split()
           assert toks[0] == 'P1'
@@ -44,16 +44,16 @@ jobs:
           print('=== OpenCV 解码结果 ===')
           print('长度:', len(got))
           print('期望:', len(expect))
-          print('完全一致:', got == expect)
+          print('完全一�?', got == expect)
           if got != expect:
               for i in range(min(len(got), len(expect))):
                   if got[i] != expect[i]:
-                      print('第一处不同 @%d' % i)
+                      print('第一处不�?@%d' % i)
                       print('  得到:', repr(got[i-10:i+30]))
                       print('  期望:', repr(expect[i-10:i+30]))
                       break
               raise SystemExit(1)
-          print('✅ ObjC 编码器输出可被标准解码器正确解出')
+          print('�?ObjC 编码器输出可被标准解码器正确解出')
           PY
 
       - name: Upload artifacts
@@ -64,3 +64,4 @@ jobs:
           path: |
             objc_qr.pbm
             objc_qr_content.txt
+            dump.txt
