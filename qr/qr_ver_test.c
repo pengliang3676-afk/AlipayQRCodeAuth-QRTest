@@ -305,12 +305,13 @@ static long deinterleave(const uint8_t *cw, long cwLen, int ver, uint8_t *outDat
     for (int i = 0; i < maxD; i++) {
         for (int b = 0; b < blocks; b++) {
             if (i < blkLen[b] && idx < cwLen) {
-                blkbuf[b][i] = cw[idx++];
+                if (i < 3000) blkbuf[b][i] = cw[idx++]; else idx++;
             }
         }
     }
     long off = 0;
     for (int b = 0; b < blocks; b++) {
+        if (off + blkLen[b] > 3000) { printf("!! outData 溢出 b=%d off=%ld len=%d\n", b, off, blkLen[b]); return -1; }
         memcpy(outData + off, blkbuf[b], blkLen[b]);
         off += blkLen[b];
     }
@@ -375,11 +376,17 @@ static int buildMatrix(const char *text, uint8_t outMod[QRNAX][QRNAX], int *outS
     long ip = 0;
     for (int i = 0; i < maxD; i++) {
         for (int b = 0; b < blocks; b++) {
-            if (i < dlen[b]) inter[ip++] = dblk[b][i];
+            if (i < dlen[b]) {
+                if (ip >= vi->total) { printf("!! inter 溢出 数据区 ip=%ld total=%d\n", ip, vi->total); return 0; }
+                inter[ip++] = dblk[b][i];
+            }
         }
     }
     for (int i = 0; i < eccLen; i++) {
-        for (int b = 0; b < blocks; b++) inter[ip++] = eblk[b][i];
+        for (int b = 0; b < blocks; b++) {
+            if (ip >= vi->total) { printf("!! inter 溢出 纠错区 ip=%ld total=%d\n", ip, vi->total); return 0; }
+            inter[ip++] = eblk[b][i];
+        }
     }
     free(dcw);
 
