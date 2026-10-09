@@ -1,4 +1,4 @@
-name: QR Selftest
+name: QR Version Test
 
 on:
   push:
@@ -12,56 +12,42 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Show gcc
-        run: gcc --version | head -1
-
       - name: Compile
-        run: gcc -O1 -o qr_selftest qr/qr_selftest_full.c
+        run: gcc -O1 -o qr_ver_test qr/qr_ver_test.c
 
       - name: Run
-        run: ./qr_selftest
+        run: ./qr_ver_test
 
-      - name: Install opencv
-        run: pip install numpy opencv-python-headless
-
-      - name: Decode the generated QR with OpenCV
+      - name: Decode all versions with zxing-cpp
         run: |
+          pip install numpy zxing-cpp pillow
           python3 - <<'PY'
-          import numpy as np, cv2
-          # �?PBM
-          with open('objc_qr.pbm') as f:
-              toks = f.read().split()
-          assert toks[0] == 'P1'
-          w, h = int(toks[1]), int(toks[2])
-          vals = np.array([int(x) for x in toks[3:3+w*h]], dtype=np.uint8).reshape(h, w)
-          img = np.where(vals, 0, 255).astype(np.uint8)
-          scale = 12
-          big = np.kron(img, np.ones((scale, scale), dtype=np.uint8))
-          det = cv2.QRCodeDetector()
-          res = det.detectAndDecode(big)
-          got = res[0] if isinstance(res, (tuple, list)) else res
-          expect = open('objc_qr_content.txt', encoding='utf-8').read()
-          print('=== OpenCV 解码结果 ===')
-          print('长度:', len(got))
-          print('期望:', len(expect))
-          print('完全一�?', got == expect)
-          if got != expect:
-              for i in range(min(len(got), len(expect))):
-                  if got[i] != expect[i]:
-                      print('第一处不�?@%d' % i)
-                      print('  得到:', repr(got[i-10:i+30]))
-                      print('  期望:', repr(expect[i-10:i+30]))
-                      break
-              raise SystemExit(1)
-          print('�?ObjC 编码器输出可被标准解码器正确解出')
-          PY
+          import glob, os, numpy as np, zxingcpp
+          from PIL import Image
 
-      - name: Upload artifacts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: qr-selftest
-          path: |
-            objc_qr.pbm
-            objc_qr_content.txt
-            dump.txt
+          ok = 0
+          bad = []
+          for v in range(1, 41):
+              pbm = 'v%02d.pbm' % v
+              txt = 'v%02d.txt' % v
+              if not os.path.exists(pbm):
+                  continue
+              toks = open(pbm).read().split()
+              w, h = int(toks[1]), int(toks[2])
+              a = np.array([int(x) for x in toks[3:3+w*h]], dtype=np.uint8).reshape(h, w)
+              img = np.where(a, 0, 255).astype(np.uint8)
+              big = np.kron(img, np.ones((8, 8), dtype=np.uint8))
+              res = zxingcpp.read_barcodes(Image.fromarray(big))
+              got = res[0].text if res else ''
+              expect = open(txt, encoding='utf-8').read()
+              if got == expect:
+                  ok += 1
+                  print('  v%-3d ✅ 解出 %d 字符' % (v, len(got)))
+              else:
+                  bad.append(v)
+                  print('  v%-3d ❌ 解不出（期望 %d 字符）' % (v, len(expect)))
+          print()
+          print('通过 %d 个版本，失败: %s' % (ok, bad if bad else '无'))
+          if bad:
+              raise SystemExit(1)
+          PY
