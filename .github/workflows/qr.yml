@@ -1,0 +1,66 @@
+name: QR Selftest
+
+on:
+  push:
+    paths:
+      - 'qr/**'
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show gcc
+        run: gcc --version | head -1
+
+      - name: Compile
+        run: gcc -O1 -o qr_selftest qr/qr_selftest_full.c
+
+      - name: Run
+        run: ./qr_selftest
+
+      - name: Install opencv
+        run: pip install numpy opencv-python-headless
+
+      - name: Decode the generated QR with OpenCV
+        run: |
+          python3 - <<'PY'
+          import numpy as np, cv2
+          # 读 PBM
+          with open('objc_qr.pbm') as f:
+              toks = f.read().split()
+          assert toks[0] == 'P1'
+          w, h = int(toks[1]), int(toks[2])
+          vals = np.array([int(x) for x in toks[3:3+w*h]], dtype=np.uint8).reshape(h, w)
+          img = np.where(vals, 0, 255).astype(np.uint8)
+          scale = 12
+          big = np.kron(img, np.ones((scale, scale), dtype=np.uint8))
+          det = cv2.QRCodeDetector()
+          res = det.detectAndDecode(big)
+          got = res[0] if isinstance(res, (tuple, list)) else res
+          expect = open('objc_qr_content.txt', encoding='utf-8').read()
+          print('=== OpenCV 解码结果 ===')
+          print('长度:', len(got))
+          print('期望:', len(expect))
+          print('完全一致:', got == expect)
+          if got != expect:
+              for i in range(min(len(got), len(expect))):
+                  if got[i] != expect[i]:
+                      print('第一处不同 @%d' % i)
+                      print('  得到:', repr(got[i-10:i+30]))
+                      print('  期望:', repr(expect[i-10:i+30]))
+                      break
+              raise SystemExit(1)
+          print('✅ ObjC 编码器输出可被标准解码器正确解出')
+          PY
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qr-selftest
+          path: |
+            objc_qr.pbm
+            objc_qr_content.txt

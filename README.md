@@ -1,0 +1,1 @@
+QR encoder self-test
