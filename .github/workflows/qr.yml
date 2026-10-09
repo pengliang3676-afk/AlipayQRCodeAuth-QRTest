@@ -21,33 +21,4 @@ jobs:
       - name: Decode all versions with zxing-cpp
         run: |
           pip install numpy zxing-cpp pillow
-          python3 - <<'PY'
-          import glob, os, numpy as np, zxingcpp
-          from PIL import Image
-
-          ok = 0
-          bad = []
-          for v in range(1, 41):
-              pbm = 'v%02d.pbm' % v
-              txt = 'v%02d.txt' % v
-              if not os.path.exists(pbm):
-                  continue
-              toks = open(pbm).read().split()
-              w, h = int(toks[1]), int(toks[2])
-              a = np.array([int(x) for x in toks[3:3+w*h]], dtype=np.uint8).reshape(h, w)
-              img = np.where(a, 0, 255).astype(np.uint8)
-              big = np.kron(img, np.ones((8, 8), dtype=np.uint8))
-              res = zxingcpp.read_barcodes(Image.fromarray(big))
-              got = res[0].text if res else ''
-              expect = open(txt, encoding='utf-8').read()
-              if got == expect:
-                  ok += 1
-                  print('  v%-3d �?解出 %d 字符' % (v, len(got)))
-              else:
-                  bad.append(v)
-                  print('  v%-3d �?解不出（期望 %d 字符�? % (v, len(expect)))
-          print()
-          print('通过 %d 个版本，失败: %s' % (ok, bad if bad else '�?))
-          if bad:
-              raise SystemExit(1)
-          PY
+          python3 qr/zxing_check.py
