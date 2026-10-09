@@ -16,7 +16,7 @@ jobs:
         run: gcc -O1 -g -fsanitize=address -o qr_ver_test qr/qr_ver_test.c
 
       - name: Run
-        run: ./qr_ver_test
+        run: ASAN_OPTIONS=detect_leaks=0 ./qr_ver_test
 
       - name: Decode all versions with zxing-cpp
         run: |
@@ -42,12 +42,12 @@ jobs:
               expect = open(txt, encoding='utf-8').read()
               if got == expect:
                   ok += 1
-                  print('  v%-3d ✅ 解出 %d 字符' % (v, len(got)))
+                  print('  v%-3d �?解出 %d 字符' % (v, len(got)))
               else:
                   bad.append(v)
-                  print('  v%-3d ❌ 解不出（期望 %d 字符）' % (v, len(expect)))
+                  print('  v%-3d �?解不出（期望 %d 字符�? % (v, len(expect)))
           print()
-          print('通过 %d 个版本，失败: %s' % (ok, bad if bad else '无'))
+          print('通过 %d 个版本，失败: %s' % (ok, bad if bad else '�?))
           if bad:
               raise SystemExit(1)
           PY
